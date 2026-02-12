@@ -1,0 +1,93 @@
+name: Question / Support
+description: Ask a question or request help
+title: "[Question]: "
+labels: ["question"]
+assignees:
+  - K4ryuu
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? Need help? We're here to assist!
+
+  - type: dropdown
+    id: sponsor
+    attributes:
+      label: Are you a GitHub Sponsor?
+      description: GitHub Sponsors receive priority support
+      options:
+        - "No"
+        - "Yes"
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is your question?
+      options:
+        - Low - General inquiry
+        - Medium - Need answer soon
+        - High - Blocking my work
+        - Critical - Production issue
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: How do I...?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context or what you've tried so far
+      placeholder: I've tried... but I'm not sure how to...
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: SwiftlyS2 Version
+      description: Which version are you using?
+      placeholder: "e.g., v1.2.3"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you using?
+      options:
+        - Windows
+        - Linux
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-environment
+    attributes:
+      label: Additional Environment Details
+      description: Any other relevant environment information
+      placeholder: "e.g., Ubuntu 22.04, Windows Server 2022, specific configurations..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Any other information that might be helpful
+      placeholder: Any additional information...
+    validations:
+      required: false
