@@ -1,0 +1,39 @@
+name: Question / Support
+description: Ask a question or request help
+title: "[Question]: "
+labels: ["question"]
+assignees:
+  - K4ryuu
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? Need help? We're here to assist!
+
+        ---
+
+        💖 **I automatically detect GitHub Sponsors!**
+        Sponsors are automatically labeled. Priority support is available from the **$15/month tier** and above. [Become a Sponsor](https://github.com/sponsors/K4ryuu)
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is your question?
+      options:
+        - Low - General inquiry
+        - Medium - Need answer soon
+        - High - Blocking my work
+        - Critical - Production issue
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: How do I...?
+    validations:
+      required: true
