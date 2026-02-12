@@ -14,7 +14,7 @@ body:
     id: sponsor
     attributes:
       label: Are you a GitHub Sponsor?
-      description: GitHub Sponsors receive priority support
+      description: "[Become a GitHub Sponsor](https://github.com/sponsors/K4ryuu) - Priority support from $15/month tier!"
       options:
         - "No"
         - "Yes"
@@ -66,22 +66,14 @@ body:
   - type: dropdown
     id: os
     attributes:
-      label: Operating System
-      description: What OS are you using?
+      label: Server Operating System
+      description: What OS is the SERVER running on? (Required)
       options:
         - Windows
         - Linux
+      default: 1
     validations:
-      required: false
-
-  - type: textarea
-    id: additional-environment
-    attributes:
-      label: Additional Environment Details
-      description: Any other relevant environment information
-      placeholder: "e.g., Ubuntu 22.04, Windows Server 2022, specific configurations..."
-    validations:
-      required: false
+      required: true
 
   - type: textarea
     id: additional
