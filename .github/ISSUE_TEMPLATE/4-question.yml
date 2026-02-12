@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Have a question? Need help? We're here to assist!
+        Have a question? Need help? I'm here to assist!
 
         ---
 
@@ -33,7 +33,7 @@ body:
     id: question
     attributes:
       label: Your Question
-      description: What would you like to know?
+      description: What would you like to know? Include any relevant context, logs, or screenshots that may help.
       placeholder: How do I...?
     validations:
       required: true

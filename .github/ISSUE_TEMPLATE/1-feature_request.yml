@@ -33,16 +33,7 @@ body:
     id: description
     attributes:
       label: Feature Description
-      description: Describe the feature you'd like to see
+      description: Describe the feature you'd like to see. Include any mockups, examples, or additional context that may help.
       placeholder: I would like to see...
     validations:
       required: true
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Add any other context, mockups, or examples
-      placeholder: Any additional information...
-    validations:
-      required: false

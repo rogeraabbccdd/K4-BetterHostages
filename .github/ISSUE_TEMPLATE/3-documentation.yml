@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Help us improve our documentation!
+        Help me improve my documentation!
 
         ---
 
@@ -48,25 +48,7 @@ body:
     id: issue
     attributes:
       label: Issue Description
-      description: What's wrong with the current documentation? (Include location if relevant)
+      description: What's wrong with the current documentation? Include the location, suggestions for improvement, and any screenshots that may help.
       placeholder: The documentation says... but it should say...
     validations:
       required: true
-
-  - type: textarea
-    id: suggestion
-    attributes:
-      label: Suggested Improvement
-      description: How should the documentation be improved?
-      placeholder: I suggest changing it to...
-    validations:
-      required: false
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Any other information or examples
-      placeholder: Any additional information...
-    validations:
-      required: false
