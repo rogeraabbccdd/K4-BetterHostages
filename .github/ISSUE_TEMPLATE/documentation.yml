@@ -14,7 +14,7 @@ body:
     id: sponsor
     attributes:
       label: Are you a GitHub Sponsor?
-      description: GitHub Sponsors receive priority support
+      description: "[Become a GitHub Sponsor](https://github.com/sponsors/K4ryuu) - Priority support from $15/month tier!"
       options:
         - "No"
         - "Yes"
@@ -32,7 +32,7 @@ body:
         - Medium - Affects understanding
         - High - Causes confusion
         - Critical - Incorrect or missing critical info
-      default: 1
+      default: 0
     validations:
       required: true
 
