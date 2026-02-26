@@ -1,23 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <RootNamespace>HostageRescue</RootNamespace>
-    <LangVersion>latest</LangVersion>
-    <TieredCompilation>true</TieredCompilation>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <AssemblyName>$(MSBuildThisFileName)</AssemblyName>
-    <OutputPath>$(MSBuildThisFileDirectory)build/</OutputPath>
-    <PublishDir>$(OutputPath)publish/$(MSBuildThisFileName)</PublishDir>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- SwiftlyS2 Core API -->
-    <PackageReference Include="SwiftlyS2.CS2" Version="*-*" ExcludeAssets="runtime" PrivateAssets="all" />
+    <!-- CounterStrikeSharp Core API -->
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.362" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Ray-Trace/managed/RayTrace/RayTraceApi/RayTraceApi.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

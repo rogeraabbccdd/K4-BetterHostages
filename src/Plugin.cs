@@ -1,70 +1,48 @@
-using Microsoft.Extensions.Logging;
-using SwiftlyS2.Shared;
-using SwiftlyS2.Shared.Memory;
-using SwiftlyS2.Shared.Plugins;
-using SwiftlyS2.Shared.Sounds;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Capabilities;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
+using RayTraceAPI;
 
 namespace HostageRescue;
 
-[PluginMetadata(
-    Id = "k4.betterhostages",
-    Version = "1.0.1",
-    Name = "K4 - Better Hostages",
-    Author = "K4ryuu",
-    Description = "Enables both Ts and CTs to pick up and drop hostages, allowing their positions to be tactically rearranged during gameplay."
-)]
-public partial class HostageRescuePlugin(ISwiftlyCore core) : BasePlugin(core)
+public partial class HostageRescuePlugin : BasePlugin
 {
+    public override string ModuleName => "K4 - Better Hostages";
+	public override string ModuleVersion => "1.0.1";
+	public override string ModuleAuthor => "K4ryuu";
+	public override string ModuleDescription => "Enables both Ts and CTs to pick up and drop hostages, allowing their positions to be tactically rearranged during gameplay.";
+
     public const float PICKUP_RANGE = 62.0f;
     public const float PICKUP_DURATION = 1.0f;
     public const float DROP_DURATION = 1.0f;
     public const float MINIMUM_SAFE_DISTANCE = 35f;
 
-    internal IUnmanagedFunction<CHostageFollowDelegate>? _cHostageFollow;
-    internal IUnmanagedFunction<CHostageDropDelegate>? _cHostageDrop;
+    internal MemoryFunctionVoid<nint, nint> _cHostageFollow = new(GameData.GetSignature("CHostage::Follow"));
+    internal MemoryFunctionVoid<nint, Vector, bool> _cHostageDrop = new(GameData.GetSignature("CHostage::DropHostage"));
 
-    internal readonly Dictionary<int, CancellationTokenSource> _playerProgressTimers = [];
-    internal readonly Dictionary<int, CancellationTokenSource> _playerValidationTimers = [];
+    internal readonly Dictionary<int, CounterStrikeSharp.API.Modules.Timers.Timer> _playerProgressTimers = [];
+    internal readonly Dictionary<int, CounterStrikeSharp.API.Modules.Timers.Timer> _playerValidationTimers = [];
     internal readonly Dictionary<int, ActionState> _playerActionState = [];
 
-    internal readonly SoundEvent _hostagePickupSound = new("Hostage.CutFreeWithDefuser");
-    internal readonly SoundEvent _hostageDropSound = new("Hostage.CutFreeWithDefuser");
+    internal readonly string _hostagePickupSound = "Hostage.CutFreeWithDefuser";
+    internal readonly string _hostageDropSound = "Hostage.CutFreeWithDefuser";
+    
+    private readonly PluginCapability<CRayTraceInterface> _rayTraceCapability = new("raytrace:craytraceinterface");
+    private CRayTraceInterface? rayTrace;
 
     public override void Load(bool hotReload)
     {
-        InitializeNativeFunctions();
-        Core.Event.OnClientKeyStateChanged += OnKeyStateChange;
+        RegisterListener<Listeners.OnPlayerButtonsChanged>(OnPlayerButtonsChanged);
     }
 
-    private void InitializeNativeFunctions()
-    {
-        try
-        {
-            var followAddr = Core.GameData.GetSignature("CHostage::Follow");
-            if (followAddr != nint.Zero)
-                _cHostageFollow = Core.Memory.GetUnmanagedFunctionByAddress<CHostageFollowDelegate>(followAddr);
-            else
-                Core.Logger.LogWarning("Could not find CHostage::Follow signature");
-
-            var dropAddr = Core.GameData.GetSignature("CHostage::DropHostage");
-            if (dropAddr != nint.Zero)
-                _cHostageDrop = Core.Memory.GetUnmanagedFunctionByAddress<CHostageDropDelegate>(dropAddr);
-            else
-                Core.Logger.LogWarning("Could not find CHostage::DropHostage signature");
-        }
-        catch (Exception ex)
-        {
-            Core.Logger.LogWarning($"Error initializing native functions: {ex.Message}");
-        }
-    }
-
-    public override void Unload()
+    public override void Unload(bool hotReload)
     {
         foreach (var timer in _playerProgressTimers.Values)
-            timer.Cancel();
+            timer.Kill();
 
         foreach (var timer in _playerValidationTimers.Values)
-            timer.Cancel();
+            timer.Kill();
 
         _playerProgressTimers.Clear();
         _playerValidationTimers.Clear();

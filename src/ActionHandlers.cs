@@ -1,41 +1,38 @@
-using SwiftlyS2.Shared.Events;
-using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Shared.SchemaDefinitions;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace HostageRescue;
 
 public partial class HostageRescuePlugin
 {
-    private void OnKeyStateChange(IOnClientKeyStateChangedEvent @event)
+    private void OnPlayerButtonsChanged(CCSPlayerController player, PlayerButtons pressed, PlayerButtons released)
     {
-        if (@event.Key != KeyKind.E)
+        if (!player.IsValid || player.UserId == null)
             return;
 
-        var player = Core.PlayerManager.GetPlayer(@event.PlayerId);
-        if (player?.PlayerPawn?.IsValid != true)
+        var warmup = Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .First().GameRules?.WarmupPeriod;
+        if (warmup == true)
             return;
 
-        var playerId = player.PlayerID;
-
-        var gameRules = Core.EntitySystem.GetGameRules();
-        if (gameRules?.IsValid ?? false)
-        {
-            if (gameRules.WarmupPeriod)
-                return;
-        }
-
-        if (@event.Pressed)
+        if (pressed == PlayerButtons.Use)
             StartHostageAction(player);
-        else
-            CancelHostageAction(playerId);
+        else if (released == PlayerButtons.Use)
+            CancelHostageAction(player.UserId.Value);
     }
 
-    private void StartHostageAction(IPlayer player)
+    private void StartHostageAction(CCSPlayerController player)
     {
-        var playerId = player.PlayerID;
-        var pawn = player.RequiredPlayerPawn;
+        var playerId = (int)player.UserId!;
+        var pawn = player.PlayerPawn.Value;
 
-        CancelHostageAction(playerId);
+        if (pawn == null)
+            return;
+
+        CancelHostageAction((int)player.UserId!);
 
         // already carrying? drop it
         if (pawn.HostageServices?.CarriedHostage.Value is CBaseEntity carriedHostage && carriedHostage.IsValid)
@@ -46,23 +43,25 @@ public partial class HostageRescuePlugin
             SetProgressBar(player, DROP_DURATION, CSPlayerBlockingUseAction_t.k_CSPlayerBlockingUseAction_HostageDropping);
             PlaySound(_hostageDropSound, pawn);
 
-            var progressTimer = Core.Scheduler.DelayBySeconds(DROP_DURATION, () => CompleteDropHostage(player));
+            var progressTimer = AddTimer(DROP_DURATION, () => CompleteDropHostage(player));
             _playerProgressTimers[playerId] = progressTimer;
 
-            var validationTimer = Core.Scheduler.RepeatBySeconds(0.25f, () => ValidateDropHostageAction(player));
+            var validationTimer = AddTimer(0.25f, () => ValidateDropHostageAction(player), TimerFlags.REPEAT);
             _playerValidationTimers[playerId] = validationTimer;
         }
         else
         {
             // only Ts can grab hostages
-            if (player.Controller.Team != Team.T)
+            if (player.Team != CsTeam.Terrorist)
                 return;
 
             var hostage = GetHostageInView(player);
             if (hostage?.IsValid != true)
                 return;
 
-            var distance = (pawn.AbsOrigin!.Value - hostage.AbsOrigin!.Value).Length();
+            if (pawn.AbsOrigin == null || hostage.AbsOrigin == null)
+                return;
+            var distance = (pawn.AbsOrigin - hostage.AbsOrigin).Length();
             if (distance > PICKUP_RANGE)
                 return;
 
@@ -75,10 +74,10 @@ public partial class HostageRescuePlugin
             SetProgressBar(player, PICKUP_DURATION, CSPlayerBlockingUseAction_t.k_CSPlayerBlockingUseAction_HostageGrabbing);
             PlaySound(_hostagePickupSound, hostage);
 
-            var progressTimer = Core.Scheduler.DelayBySeconds(PICKUP_DURATION, () => CompletePickupHostage(player, hostage));
+            var progressTimer = AddTimer(PICKUP_DURATION, () => CompletePickupHostage(player, hostage));
             _playerProgressTimers[playerId] = progressTimer;
 
-            var validationTimer = Core.Scheduler.RepeatBySeconds(0.25f, () => ValidatePickupHostageAction(player, hostage));
+            var validationTimer = AddTimer(0.25f, () => ValidatePickupHostageAction(player, hostage), TimerFlags.REPEAT);
             _playerValidationTimers[playerId] = validationTimer;
         }
     }
@@ -89,13 +88,13 @@ public partial class HostageRescuePlugin
 
         if (_playerProgressTimers.TryGetValue(playerId, out var progressTimer))
         {
-            progressTimer.Cancel();
+            progressTimer.Kill();
             _playerProgressTimers.Remove(playerId);
         }
 
         if (_playerValidationTimers.TryGetValue(playerId, out var validationTimer))
         {
-            validationTimer.Cancel();
+            validationTimer.Kill();
             _playerValidationTimers.Remove(playerId);
         }
 
@@ -103,84 +102,88 @@ public partial class HostageRescuePlugin
 
         if (hadActiveAction)
         {
-            var player = Core.PlayerManager.GetPlayer(playerId);
+            var player = Utilities.GetPlayerFromUserid(playerId);
             if (player?.PlayerPawn?.IsValid == true)
                 SetProgressBar(player, 0, CSPlayerBlockingUseAction_t.k_CSPlayerBlockingUseAction_None);
         }
     }
 
-    private void ValidatePickupHostageAction(IPlayer player, CHostage hostage)
+    private void ValidatePickupHostageAction(CCSPlayerController player, CHostage hostage)
     {
-        var pawn = player.PlayerPawn;
-        if (pawn?.AbsOrigin == null || hostage?.IsValid != true)
+        var pawn = player.PlayerPawn.Value;
+        if (pawn?.AbsOrigin == null || hostage?.IsValid != true || hostage.AbsOrigin == null)
         {
-            CancelHostageAction(player.PlayerID);
+            CancelHostageAction((int)player.UserId!);
             return;
         }
 
-        float distance = (pawn.AbsOrigin.Value - hostage.AbsOrigin!.Value).Length();
+        float distance = (pawn.AbsOrigin - hostage.AbsOrigin).Length();
         if (distance >= PICKUP_RANGE)
         {
-            CancelHostageAction(player.PlayerID);
+            CancelHostageAction((int)player.UserId!);
             return;
         }
 
         var inView = GetHostageInView(player);
         if (inView?.Index != hostage.Index)
-            CancelHostageAction(player.PlayerID);
+            CancelHostageAction((int)player.UserId!);
     }
 
-    private void ValidateDropHostageAction(IPlayer player)
+    private void ValidateDropHostageAction(CCSPlayerController player)
     {
-        var pawn = player.PlayerPawn;
+        var pawn = player.PlayerPawn.Value;
         if (pawn?.IsValid != true)
         {
-            CancelHostageAction(player.PlayerID);
+            CancelHostageAction((int)player.UserId!);
             return;
         }
 
         if (pawn.HostageServices?.CarriedHostage.Value?.IsValid != true)
-            CancelHostageAction(player.PlayerID);
+            CancelHostageAction((int)player.UserId!);
     }
 
-    private void CompletePickupHostage(IPlayer player, CHostage hostage)
+    private void CompletePickupHostage(CCSPlayerController player, CHostage hostage)
     {
-        CancelHostageAction(player.PlayerID);
+        CancelHostageAction((int)player.UserId!);
 
         if (hostage?.IsValid != true)
             return;
 
         hostage.HostageState = 2;
-        hostage.HostageStateUpdated();
+        Utilities.SetStateChanged(hostage, "CHostage", "m_nHostageState");
 
-        hostage.GrabSuccessTime.Value = Core.Engine.GlobalVars.CurrentTime;
-        hostage.GrabSuccessTimeUpdated();
+        hostage.GrabSuccessTime = Server.CurrentTime;
+        Utilities.SetStateChanged(hostage, "CHostage", "m_flGrabSuccessTime");
 
         if (hostage.AbsOrigin != null)
-            hostage.GrabbedPos = hostage.AbsOrigin.Value;
+        {
+            hostage.GrabbedPos.X = hostage.AbsOrigin.X;
+            hostage.GrabbedPos.Y = hostage.AbsOrigin.Y;
+            hostage.GrabbedPos.Z = hostage.AbsOrigin.Z;
+        }
 
         // small delay before actually attaching to player
-        Core.Scheduler.DelayBySeconds(0.25f, () =>
+        AddTimer(0.25f, () =>
         {
             if (hostage?.IsValid != true)
                 return;
 
             hostage.HostageState = 3;
-            hostage.HostageStateUpdated();
+            Utilities.SetStateChanged(hostage, "CHostage", "m_nHostageState");
 
             hostage.Effects |= 32; // invisibility
-            hostage.EffectsUpdated();
+            Utilities.SetStateChanged(hostage, "CBaseEntity", "m_fEffects");
 
             InvokeHostageFollow(player, hostage);
             SetProgressBar(player, 0, CSPlayerBlockingUseAction_t.k_CSPlayerBlockingUseAction_None);
         });
     }
 
-    private void CompleteDropHostage(IPlayer player)
+    private void CompleteDropHostage(CCSPlayerController player)
     {
-        CancelHostageAction(player.PlayerID);
+        CancelHostageAction((int)player.UserId!);
 
-        var pawn = player.PlayerPawn;
+        var pawn = player.PlayerPawn.Value;
         if (pawn?.AbsOrigin != null)
         {
             var dropPos = GetDropPosition(pawn);

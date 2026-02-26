@@ -1,25 +1,30 @@
-using SwiftlyS2.Shared.Natives;
-using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Shared.SchemaDefinitions;
-using SwiftlyS2.Shared.Sounds;
+﻿using System.Numerics;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
 
 namespace HostageRescue;
 
 public partial class HostageRescuePlugin
 {
-    private CHostage? GetHostageInView(IPlayer player)
+    private CHostage? GetHostageInView(CCSPlayerController player)
     {
-        var gameRules = Core.EntitySystem.GetGameRules();
+        var gameRules = Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .First().GameRules;
+
         if (gameRules == null)
             return null;
+                
+        var entity = gameRules.FindPickerEntity<CHostage>(player);
 
-        var entity = gameRules.FindPickerEntity<CHostage>(player.Controller);
         if (entity?.IsValid == true && entity.DesignerName == "hostage_entity")
         {
-            var pawn = player.PlayerPawn;
-            if (pawn?.AbsOrigin != null && entity.AbsOrigin != null)
+            var pawn = player.PlayerPawn.Value;
+            if (pawn?.AbsOrigin != null && entity?.AbsOrigin != null)
             {
-                var distance = GetDistance(pawn.AbsOrigin.Value, entity.AbsOrigin.Value);
+                var distance = GetDistance(pawn.AbsOrigin, entity.AbsOrigin);
                 if (distance <= PICKUP_RANGE)
                     return entity;
             }
@@ -34,7 +39,8 @@ public partial class HostageRescuePlugin
         var playerRotation = pawn.AbsRotation ?? QAngle.Zero;
 
         // try dropping in front first
-        float radianY = playerRotation.Yaw * (MathF.PI / 180f);
+        float playerYaw = playerRotation.Y * (float)(Math.PI / 180.0f);
+        float radianY = playerYaw * (MathF.PI / 180f);
         var forward = new Vector(
             MathF.Cos(radianY) * PICKUP_RANGE,
             MathF.Sin(radianY) * PICKUP_RANGE,
@@ -60,7 +66,7 @@ public partial class HostageRescuePlugin
 
         float originalDropDistance = GetDistance(playerPos, initialPosition);
         float searchDistance = Math.Max(originalDropDistance, MINIMUM_SAFE_DISTANCE);
-        float playerYaw = playerRotation.Yaw;
+        float playerYaw = playerRotation.Y * (float)(Math.PI / 180.0f);
 
         // try sides first, then diagonals, then behind
         int[] smartAngles = [-90, 90, -60, 60, -120, 120, -30, 30, 180, 0];
@@ -90,116 +96,111 @@ public partial class HostageRescuePlugin
 
     private bool IsValidHostagePosition(CCSPlayerPawn playerPawn, Vector position)
     {
+        rayTrace = _rayTraceCapability.Get();
+        if (rayTrace == null)
+            return false;
+
         var playerPos = playerPawn.AbsOrigin ?? Vector.Zero;
 
         if (GetDistance(position, playerPos) < 25f)
             return false;
 
-        var allPlayers = Core.PlayerManager.GetAllPlayers();
+        var allPlayers = Utilities.GetPlayers();
         if (allPlayers != null)
         {
             foreach (var otherPlayer in allPlayers)
             {
-                if (otherPlayer?.PlayerPawn?.AbsOrigin == null)
+                if (otherPlayer?.PlayerPawn?.Value?.AbsOrigin == null)
                     continue;
 
                 var ownerEntity = playerPawn.OwnerEntity;
-                if (ownerEntity.IsValid && otherPlayer.PlayerID == ownerEntity.EntityIndex)
+                if (ownerEntity.IsValid && otherPlayer.UserId == ownerEntity.Index)
                     continue;
 
-                var otherPos = otherPlayer.PlayerPawn.AbsOrigin;
-                if (otherPos.HasValue && GetDistance(position, otherPos.Value) < 25f)
+                var otherPos = otherPlayer.PlayerPawn.Value.AbsOrigin;
+                if (otherPos != null && GetDistance(position, otherPos) < 25f)
                     return false;
             }
         }
-
-        // hull trace for collision check
-        var trace = new CGameTrace();
 
         var endPos = new Vector(
             position.X + (position.X - playerPos.X) * 0.3f,
             position.Y + (position.Y - playerPos.Y) * 0.3f,
             position.Z + 10
         );
+        
+        var maskPlayerSolid = RayTraceAPI.InteractionLayers.Solid | RayTraceAPI.InteractionLayers.Player | RayTraceAPI.InteractionLayers.NPC | RayTraceAPI.InteractionLayers.WorldGeometry | RayTraceAPI.InteractionLayers.Physics_Prop | RayTraceAPI.InteractionLayers.StaticLevel;
 
-        const MaskTrace maskPlayerSolid = MaskTrace.Solid | MaskTrace.Player | MaskTrace.Npc | MaskTrace.WorldGeometry | MaskTrace.PhysicsProp | MaskTrace.StaticLevel;
-
-        Core.Trace.SimpleTrace(
-            position,
-            endPos,
-            RayType_t.RAY_TYPE_HULL,
-            RnQueryObjectSet.All,
-            maskPlayerSolid,
-            MaskTrace.Empty,
-            MaskTrace.Empty,
-            CollisionGroup.PlayerMovement,
-            ref trace,
-            playerPawn
-        );
-
+        RayTraceAPI.TraceOptions options = new()
+        {
+            InteractsAs = (ulong)RayTraceAPI.InteractionLayers.Player,
+            InteractsExclude = 0,
+            InteractsWith = (ulong)maskPlayerSolid
+        };
+        rayTrace.TraceHullShape(position, endPos, new Vector(-16, -16, -0), new Vector(16, 16, 72), null, options, out var trace);
+        
         return trace.Fraction > 0.5f;
     }
 
-    private void InvokeHostageFollow(IPlayer player, CHostage hostage)
+    private void InvokeHostageFollow(CCSPlayerController player, CHostage hostage)
     {
         if (_cHostageFollow == null)
             return;
 
-        var pawn = player.PlayerPawn;
+        var pawn = player.PlayerPawn.Value;
         if (pawn?.IsValid != true || hostage?.IsValid != true)
             return;
 
-        _cHostageFollow.Call(hostage.Address, pawn.Address);
+        _cHostageFollow.Invoke(hostage.Handle, pawn.Handle);
     }
 
-    private void InvokeHostageDrop(IPlayer player, Vector? dropPosition = null)
+    private void InvokeHostageDrop(CCSPlayerController player, Vector? dropPosition = null)
     {
         if (_cHostageDrop == null)
             return;
 
         var pawn = player.PlayerPawn;
-        if (pawn?.IsValid != true)
+        if (pawn.Value == null && pawn?.IsValid != true)
             return;
 
-        var carriedHostage = pawn.HostageServices?.CarriedHostage.Value;
+        var carriedHostage = pawn.Value?.HostageServices?.CarriedHostage.Value;
         if (carriedHostage?.IsValid != true)
             return;
 
-        var dropPos = dropPosition ?? pawn.AbsOrigin ?? new Vector(0, 0, 0);
-        var hostageHandle = carriedHostage as INativeHandle;
+        var dropPos = dropPosition ?? pawn.Value?.AbsOrigin ?? new Vector(0, 0, 0);
+        var hostageHandle = carriedHostage.Handle;
 
-        if (hostageHandle?.Address == IntPtr.Zero)
+        if (hostageHandle == IntPtr.Zero)
             return;
 
-        _cHostageDrop.Call(hostageHandle!.Address, ref dropPos, false);
+        _cHostageDrop.Invoke(hostageHandle, dropPos, false);
     }
 
-    private void SetProgressBar(IPlayer player, float duration, CSPlayerBlockingUseAction_t actionType)
+    private void SetProgressBar(CCSPlayerController player, float duration, CSPlayerBlockingUseAction_t actionType)
     {
-        var pawn = player.PlayerPawn;
-        if (pawn?.IsValid != true)
+        var pawn = player.PlayerPawn.Value;
+        if (pawn == null && pawn?.IsValid != true)
             return;
 
         int progressTime = (int)Math.Ceiling(duration);
-        float currentTime = Core.Engine.GlobalVars.CurrentTime;
-
+        float currentTime = Server.CurrentTime;
         pawn.ProgressBarDuration = progressTime;
-        pawn.ProgressBarDurationUpdated();
+        Utilities.SetStateChanged(pawn, "CCSPlayerPawnBase", "m_iProgressBarDuration");
 
         pawn.ProgressBarStartTime = duration == 0 ? 0 : currentTime;
-        pawn.ProgressBarStartTimeUpdated();
+        Utilities.SetStateChanged(pawn, "CCSPlayerPawnBase", "m_flProgressBarStartTime");
 
         pawn.SimulationTime = currentTime + duration;
-        pawn.SimulationTimeUpdated();
+        Utilities.SetStateChanged(pawn, "CBaseEntity", "m_flSimulationTime");
 
         pawn.BlockingUseActionInProgress = actionType;
-        pawn.BlockingUseActionInProgressUpdated();
+        Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_iBlockingUseActionInProgress");
     }
 
-    private void PlaySound(SoundEvent sound, CEntityInstance source)
+    private void PlaySound(string sound, CBaseEntity source)
     {
-        sound.SetSourceEntity(source);
-        sound.Recipients.AddAllPlayers();
-        sound.Emit();
+        RecipientFilter filter = new RecipientFilter();
+        filter.AddAllPlayers();
+        source.EmitSound(sound, filter, 1f);
     }
 }
