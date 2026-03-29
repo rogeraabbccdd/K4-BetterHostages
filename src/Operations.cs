@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using CounterStrikeSharp.API;
+﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
@@ -96,8 +95,7 @@ public partial class HostageRescuePlugin
 
     private bool IsValidHostagePosition(CCSPlayerPawn playerPawn, Vector position)
     {
-        rayTrace = _rayTraceCapability.Get();
-        if (rayTrace == null)
+        if (rayTraceApi == null)
             return false;
 
         var playerPos = playerPawn.AbsOrigin ?? Vector.Zero;
@@ -113,8 +111,8 @@ public partial class HostageRescuePlugin
                 if (otherPlayer?.PlayerPawn?.Value?.AbsOrigin == null)
                     continue;
 
-                var ownerEntity = playerPawn.OwnerEntity;
-                if (ownerEntity.IsValid && otherPlayer.UserId == ownerEntity.Index)
+                var ownerEntity = playerPawn.OwnerEntity.Value;
+                if (ownerEntity != null && otherPlayer.UserId == ownerEntity.Index)
                     continue;
 
                 var otherPos = otherPlayer.PlayerPawn.Value.AbsOrigin;
@@ -137,9 +135,13 @@ public partial class HostageRescuePlugin
             InteractsExclude = 0,
             InteractsWith = (ulong)maskPlayerSolid
         };
-        rayTrace.TraceHullShape(position, endPos, new Vector(-16, -16, -0), new Vector(16, 16, 72), null, options, out var trace);
         
-        return trace.Fraction > 0.5f;
+        if (rayTraceApi.TraceHullShape(position, endPos, new Vector(-16, -16, 0), new Vector(16, 16, 72), playerPawn, options, out var trace))
+        {
+            return trace.Fraction > 0.5f;
+        }
+        
+        return false;
     }
 
     private void InvokeHostageFollow(CCSPlayerController player, CHostage hostage)

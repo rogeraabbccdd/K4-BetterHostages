@@ -2,7 +2,6 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
-using RayTraceAPI;
 
 namespace HostageRescue;
 
@@ -28,16 +27,18 @@ public partial class HostageRescuePlugin : BasePlugin
     internal readonly string _hostagePickupSound = "Hostage.CutFreeWithDefuser";
     internal readonly string _hostageDropSound = "Hostage.CutFreeWithDefuser";
     
-    private readonly PluginCapability<CRayTraceInterface> _rayTraceCapability = new("raytrace:craytraceinterface");
-    private CRayTraceInterface? rayTrace;
+    private static CRayTrace? rayTraceApi;
 
     public override void Load(bool hotReload)
     {
         RegisterListener<Listeners.OnPlayerButtonsChanged>(OnPlayerButtonsChanged);
+        RegisterListener<Listeners.OnMetamodAllPluginsLoaded>(OnMetamodAllPluginsLoaded);
     }
 
     public override void Unload(bool hotReload)
     {
+        RemoveListener<Listeners.OnMetamodAllPluginsLoaded>(OnMetamodAllPluginsLoaded);
+
         foreach (var timer in _playerProgressTimers.Values)
             timer.Kill();
 
@@ -47,5 +48,15 @@ public partial class HostageRescuePlugin : BasePlugin
         _playerProgressTimers.Clear();
         _playerValidationTimers.Clear();
         _playerActionState.Clear();
+    }
+
+    private void OnMetamodAllPluginsLoaded()
+    {
+        if (!RayTraceBridge.Initialize())
+        {
+            rayTraceApi = null;
+            return;
+        }
+        rayTraceApi = new CRayTrace();
     }
 }
