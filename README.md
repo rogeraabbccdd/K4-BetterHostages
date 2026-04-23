@@ -12,7 +12,7 @@
 <div align="center">
   <h1 align="center">KitsuneLab©</h1>
   <h3 align="center">K4 - Better Hostages</h3>
-  <a align="center">A SwiftlyS2 plugin for Counter-Strike 2 that enables both Terrorists and Counter-Terrorists to pick up and drop hostages, allowing their positions to be tactically rearranged during gameplay.</a>
+  <a align="center">A <del>SwiftlyS2</del> CounterStrikeSharp plugin for Counter-Strike 2 that enables both Terrorists and Counter-Terrorists to pick up and drop hostages, allowing their positions to be tactically rearranged during gameplay.</a>
 
   <p align="center">
     <br />
@@ -49,7 +49,9 @@ Every contribution helps me dedicate more time to development, support, and crea
 
 To use this server addon, you'll need the following dependencies installed:
 
-- [**SwiftlyS2**](https://github.com/swiftly-solution/swiftlys2): SwiftlyS2 is a server plugin framework for Counter-Strike 2
+- ~~[**SwiftlyS2**](https://github.com/swiftly-solution/swiftlys2): SwiftlyS2 is a server plugin framework for Counter-Strike 2~~
+- [**CounterStrikeSharp**](https://github.com/roflmuffin/CounterStrikeSharp/releases): CounterStrikeSharp allows you to write server plugins in C# for Counter-Strike 2/Source2/CS2.
+- [**Ray-Trace**](https://github.com/FUNPLAY-pro-CS2/Ray-Trace) Ray Trace.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -57,9 +59,9 @@ To use this server addon, you'll need the following dependencies installed:
 
 ## Installation
 
-1. Install [SwiftlyS2](https://github.com/swiftly-solution/swiftlys2) on your server
+1. Install ~~[SwiftlyS2](https://github.com/swiftly-solution/swiftlys2)~~ [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp/releases) and [Ray-Trace](https://github.com/FUNPLAY-pro-CS2/Ray-Trace) on your server, `RayTraceImpl` plugin is not needed
 2. [Download the latest release](https://github.com/K4ryuu/K4-BetterHostages-SwiftlyS2/releases/latest)
-3. Extract to your server's `swiftlys2/plugins/` directory
+3. Extract to your server's `counterstrikesharp/plugins/` directory
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
