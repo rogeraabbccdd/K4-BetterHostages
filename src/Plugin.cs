@@ -52,7 +52,7 @@ public partial class HostageRescuePlugin : BasePlugin
 
     private void OnMetamodAllPluginsLoaded()
     {
-        if (!RayTraceBridge.Initialize())
+        if (!NativeBridge.Initialize())
         {
             rayTraceApi = null;
             return;

@@ -131,7 +131,6 @@ public partial class HostageRescuePlugin
 
         RayTraceAPI.TraceOptions options = new()
         {
-            InteractsAs = (ulong)RayTraceAPI.InteractionLayers.Player,
             InteractsExclude = 0,
             InteractsWith = (ulong)maskPlayerSolid
         };
