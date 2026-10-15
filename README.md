@@ -51,7 +51,6 @@ To use this server addon, you'll need the following dependencies installed:
 
 - ~~[**SwiftlyS2**](https://github.com/swiftly-solution/swiftlys2): SwiftlyS2 is a server plugin framework for Counter-Strike 2~~
 - [**CounterStrikeSharp**](https://github.com/roflmuffin/CounterStrikeSharp/releases): CounterStrikeSharp allows you to write server plugins in C# for Counter-Strike 2/Source2/CS2.
-- [**Ray-Trace**](https://github.com/FUNPLAY-pro-CS2/Ray-Trace) Ray Trace.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -59,7 +58,7 @@ To use this server addon, you'll need the following dependencies installed:
 
 ## Installation
 
-1. Install ~~[SwiftlyS2](https://github.com/swiftly-solution/swiftlys2)~~ [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp/releases) and [Ray-Trace](https://github.com/FUNPLAY-pro-CS2/Ray-Trace) on your server, `RayTraceImpl` plugin is not needed
+1. Install ~~[SwiftlyS2](https://github.com/swiftly-solution/swiftlys2)~~ [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp/releases) on your server
 2. [Download the latest release](https://github.com/K4ryuu/K4-BetterHostages-SwiftlyS2/releases/latest)
 3. Extract to your server's `counterstrikesharp/plugins/` directory
 

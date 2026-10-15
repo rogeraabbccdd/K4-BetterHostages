@@ -95,9 +95,6 @@ public partial class HostageRescuePlugin
 
     private bool IsValidHostagePosition(CCSPlayerPawn playerPawn, Vector position)
     {
-        if (rayTraceApi == null)
-            return false;
-
         var playerPos = playerPawn.AbsOrigin ?? Vector.Zero;
 
         if (GetDistance(position, playerPos) < 25f)
@@ -127,20 +124,16 @@ public partial class HostageRescuePlugin
             position.Z + 10
         );
         
-        var maskPlayerSolid = RayTraceAPI.InteractionLayers.Solid | RayTraceAPI.InteractionLayers.Player | RayTraceAPI.InteractionLayers.NPC | RayTraceAPI.InteractionLayers.WorldGeometry | RayTraceAPI.InteractionLayers.Physics_Prop | RayTraceAPI.InteractionLayers.StaticLevel;
+        var maskPlayerSolid = Contents.Solid | Contents.Player | Contents.Npc | Contents.WorldGeometry | Contents.PhysicsProp | Contents.StaticLevel;
 
-        RayTraceAPI.TraceOptions options = new()
+        TraceOptions options = new()
         {
-            InteractsExclude = 0,
-            InteractsWith = (ulong)maskPlayerSolid
+            InteractsAs = Contents.Solid,
+            InteractsWith = maskPlayerSolid
         };
-        
-        if (rayTraceApi.TraceHullShape(position, endPos, new Vector(-16, -16, 0), new Vector(16, 16, 72), playerPawn, options, out var trace))
-        {
-            return trace.Fraction > 0.5f;
-        }
-        
-        return false;
+
+        var trace = Trace.TraceHullShape(position, endPos, new Vector(-16, -16, 0), new Vector(16, 16, 72), playerPawn, options);
+        return trace.Fraction > 0.5f;
     }
 
     private void InvokeHostageFollow(CCSPlayerController player, CHostage hostage)
